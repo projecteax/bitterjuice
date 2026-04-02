@@ -1,0 +1,484 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A00000000000000000000001 /* BitterJuiceApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000001 /* BitterJuiceApp.swift */; };
+		A00000000000000000000002 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000002 /* RootView.swift */; };
+		A00000000000000000000003 /* MainTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000003 /* MainTabView.swift */; };
+		A0000000000000000000001F /* SupabaseClientProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000024 /* SupabaseClientProvider.swift */; };
+		A00000000000000000000020 /* ProfileSyncService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000025 /* ProfileSyncService.swift */; };
+		A00000000000000000000005 /* OnboardingEntryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000005 /* OnboardingEntryView.swift */; };
+		A00000000000000000000006 /* OnboardingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000006 /* OnboardingViewModel.swift */; };
+		A00000000000000000000007 /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000007 /* DashboardView.swift */; };
+		A00000000000000000000008 /* ActivityLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000008 /* ActivityLogView.swift */; };
+		A00000000000000000000009 /* SquadFeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000009 /* SquadFeedView.swift */; };
+		A0000000000000000000000A /* RewardsVaultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000A /* RewardsVaultView.swift */; };
+		A0000000000000000000000B /* ProfileView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000B /* ProfileView.swift */; };
+		A0000000000000000000000C /* SessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000C /* SessionStore.swift */; };
+		A0000000000000000000000D /* AuthService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000D /* AuthService.swift */; };
+		A0000000000000000000000F /* BitterJuiceRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000F /* BitterJuiceRepository.swift */; };
+		A00000000000000000000010 /* R2UploadService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000010 /* R2UploadService.swift */; };
+		A00000000000000000000011 /* HealthKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* HealthKitService.swift */; };
+		A00000000000000000000012 /* ObservabilityService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* ObservabilityService.swift */; };
+		A00000000000000000000021 /* SupabaseConfig.plist in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000026 /* SupabaseConfig.plist */; };
+		A00000000000000000000014 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A10000000000000000000014 /* HealthKit.framework */; };
+		A00000000000000000000022 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = A20000000000000000000007 /* Supabase */; };
+		A0000000000000000000001B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000015 /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A10000000000000000000001 /* BitterJuiceApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BitterJuiceApp.swift; sourceTree = "<group>"; };
+		A10000000000000000000002 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		A10000000000000000000003 /* MainTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabView.swift; sourceTree = "<group>"; };
+		A10000000000000000000024 /* SupabaseClientProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupabaseClientProvider.swift; sourceTree = "<group>"; };
+		A10000000000000000000025 /* ProfileSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSyncService.swift; sourceTree = "<group>"; };
+		A10000000000000000000005 /* OnboardingEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingEntryView.swift; sourceTree = "<group>"; };
+		A10000000000000000000006 /* OnboardingViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingViewModel.swift; sourceTree = "<group>"; };
+		A10000000000000000000007 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		A10000000000000000000008 /* ActivityLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityLogView.swift; sourceTree = "<group>"; };
+		A10000000000000000000009 /* SquadFeedView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SquadFeedView.swift; sourceTree = "<group>"; };
+		A1000000000000000000000A /* RewardsVaultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RewardsVaultView.swift; sourceTree = "<group>"; };
+		A1000000000000000000000B /* ProfileView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileView.swift; sourceTree = "<group>"; };
+		A1000000000000000000000C /* SessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStore.swift; sourceTree = "<group>"; };
+		A1000000000000000000000D /* AuthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthService.swift; sourceTree = "<group>"; };
+		A1000000000000000000000F /* BitterJuiceRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BitterJuiceRepository.swift; sourceTree = "<group>"; };
+		A10000000000000000000010 /* R2UploadService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = R2UploadService.swift; sourceTree = "<group>"; };
+		A10000000000000000000011 /* HealthKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitService.swift; sourceTree = "<group>"; };
+		A10000000000000000000012 /* ObservabilityService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObservabilityService.swift; sourceTree = "<group>"; };
+		A10000000000000000000026 /* SupabaseConfig.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = SupabaseConfig.plist; sourceTree = "<group>"; };
+		A10000000000000000000014 /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
+		A10000000000000000000015 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		A10000000000000000000020 /* BitterJuice.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BitterJuice.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A30000000000000000000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A00000000000000000000014 /* HealthKit.framework in Frameworks */,
+				A00000000000000000000022 /* Supabase in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		971343C22F7D791C0012E890 /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000014 /* HealthKit.framework */,
+			);
+			name = "Recovered References";
+			sourceTree = "<group>";
+		};
+		A40000000000000000000001 = {
+			isa = PBXGroup;
+			children = (
+				A40000000000000000000002 /* BitterJuiceApp */,
+				A40000000000000000000003 /* Products */,
+				971343C22F7D791C0012E890 /* Recovered References */,
+			);
+			sourceTree = "<group>";
+		};
+		A40000000000000000000002 /* BitterJuiceApp */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000015 /* Assets.xcassets */,
+				A10000000000000000000026 /* SupabaseConfig.plist */,
+				A40000000000000000000004 /* App */,
+				A40000000000000000000005 /* Features */,
+				A40000000000000000000006 /* Shared */,
+			);
+			path = BitterJuiceApp;
+			sourceTree = "<group>";
+		};
+		A40000000000000000000003 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000020 /* BitterJuice.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A40000000000000000000004 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000001 /* BitterJuiceApp.swift */,
+				A10000000000000000000002 /* RootView.swift */,
+				A10000000000000000000003 /* MainTabView.swift */,
+				A10000000000000000000024 /* SupabaseClientProvider.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		A40000000000000000000005 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				A40000000000000000000007 /* Onboarding */,
+				A40000000000000000000008 /* Dashboard */,
+				A40000000000000000000009 /* Logging */,
+				A4000000000000000000000A /* Feed */,
+				A4000000000000000000000B /* Rewards */,
+				A4000000000000000000000C /* Profile */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		A40000000000000000000006 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				A4000000000000000000000D /* Data */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		A40000000000000000000007 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000005 /* OnboardingEntryView.swift */,
+				A10000000000000000000006 /* OnboardingViewModel.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		A40000000000000000000008 /* Dashboard */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000007 /* DashboardView.swift */,
+			);
+			path = Dashboard;
+			sourceTree = "<group>";
+		};
+		A40000000000000000000009 /* Logging */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000008 /* ActivityLogView.swift */,
+			);
+			path = Logging;
+			sourceTree = "<group>";
+		};
+		A4000000000000000000000A /* Feed */ = {
+			isa = PBXGroup;
+			children = (
+				A10000000000000000000009 /* SquadFeedView.swift */,
+			);
+			path = Feed;
+			sourceTree = "<group>";
+		};
+		A4000000000000000000000B /* Rewards */ = {
+			isa = PBXGroup;
+			children = (
+				A1000000000000000000000A /* RewardsVaultView.swift */,
+			);
+			path = Rewards;
+			sourceTree = "<group>";
+		};
+		A4000000000000000000000C /* Profile */ = {
+			isa = PBXGroup;
+			children = (
+				A1000000000000000000000B /* ProfileView.swift */,
+			);
+			path = Profile;
+			sourceTree = "<group>";
+		};
+		A4000000000000000000000D /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				A1000000000000000000000C /* SessionStore.swift */,
+				A1000000000000000000000D /* AuthService.swift */,
+				A10000000000000000000025 /* ProfileSyncService.swift */,
+				A1000000000000000000000F /* BitterJuiceRepository.swift */,
+				A10000000000000000000010 /* R2UploadService.swift */,
+				A10000000000000000000011 /* HealthKitService.swift */,
+				A10000000000000000000012 /* ObservabilityService.swift */,
+			);
+			path = Data;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A50000000000000000000001 /* BitterJuice */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A60000000000000000000002 /* Build configuration list for PBXNativeTarget "BitterJuice" */;
+			buildPhases = (
+				A50000000000000000000002 /* Sources */,
+				A30000000000000000000001 /* Frameworks */,
+				A50000000000000000000003 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BitterJuice;
+			packageProductDependencies = (
+				A20000000000000000000007 /* Supabase */,
+			);
+			productName = BitterJuice;
+			productReference = A10000000000000000000020 /* BitterJuice.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A50000000000000000000004 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					A50000000000000000000001 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = A60000000000000000000001 /* Build configuration list for PBXProject "BitterJuice" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A40000000000000000000001;
+			packageReferences = (
+				A70000000000000000000002 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
+			productRefGroup = A40000000000000000000003 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A50000000000000000000001 /* BitterJuice */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A50000000000000000000003 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A0000000000000000000001B /* Assets.xcassets in Resources */,
+				A00000000000000000000021 /* SupabaseConfig.plist in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A50000000000000000000002 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A00000000000000000000001 /* BitterJuiceApp.swift in Sources */,
+				A00000000000000000000002 /* RootView.swift in Sources */,
+				A00000000000000000000003 /* MainTabView.swift in Sources */,
+				A0000000000000000000001F /* SupabaseClientProvider.swift in Sources */,
+				A00000000000000000000020 /* ProfileSyncService.swift in Sources */,
+				A00000000000000000000005 /* OnboardingEntryView.swift in Sources */,
+				A00000000000000000000006 /* OnboardingViewModel.swift in Sources */,
+				A00000000000000000000007 /* DashboardView.swift in Sources */,
+				A00000000000000000000008 /* ActivityLogView.swift in Sources */,
+				A00000000000000000000009 /* SquadFeedView.swift in Sources */,
+				A0000000000000000000000A /* RewardsVaultView.swift in Sources */,
+				A0000000000000000000000B /* ProfileView.swift in Sources */,
+				A0000000000000000000000C /* SessionStore.swift in Sources */,
+				A0000000000000000000000D /* AuthService.swift in Sources */,
+				A0000000000000000000000F /* BitterJuiceRepository.swift in Sources */,
+				A00000000000000000000010 /* R2UploadService.swift in Sources */,
+				A00000000000000000000011 /* HealthKitService.swift in Sources */,
+				A00000000000000000000012 /* ObservabilityService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A80000000000000000000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A80000000000000000000002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		A80000000000000000000003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 865NB5DVTD;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = BitterJuice;
+				INFOPLIST_KEY_CFBundleIconName = AppIcon;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bitterjuiceapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A80000000000000000000004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 865NB5DVTD;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = BitterJuice;
+				INFOPLIST_KEY_CFBundleIconName = AppIcon;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.bitterjuiceapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A60000000000000000000001 /* Build configuration list for PBXProject "BitterJuice" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A80000000000000000000001 /* Debug */,
+				A80000000000000000000002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A60000000000000000000002 /* Build configuration list for PBXNativeTarget "BitterJuice" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A80000000000000000000003 /* Debug */,
+				A80000000000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A70000000000000000000002 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A20000000000000000000007 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A70000000000000000000002 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = A50000000000000000000004 /* Project object */;
+}

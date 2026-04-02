@@ -1,0 +1,35 @@
+{
+  "name": "bitterjuice-functions",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint \"src/**/*.ts\"",
+    "test": "vitest run",
+    "dev": "tsx src/local-dev.ts",
+    "deploy:functions": "npm run build && cd .. && ./functions/node_modules/.bin/firebase deploy --only functions"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "@aws-sdk/client-s3": "^3.782.0",
+    "@aws-sdk/s3-request-presigner": "^3.782.0",
+    "firebase-admin": "^13.4.0",
+    "firebase-functions": "^6.4.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "firebase-tools": "^14.0.0",
+    "@types/node": "^22.14.1",
+    "@typescript-eslint/eslint-plugin": "^8.29.0",
+    "@typescript-eslint/parser": "^8.29.0",
+    "eslint": "^9.23.0",
+    "eslint-config-prettier": "^10.1.1",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.9"
+  }
+}
