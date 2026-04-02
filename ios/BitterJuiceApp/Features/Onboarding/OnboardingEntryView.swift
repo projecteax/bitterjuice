@@ -249,7 +249,7 @@ struct OnboardingEntryView: View {
 
     private var goalChoices: [GoalChoice] {
         [
-            .init(id: "overcoming_workaholism", title: "Ease off the hustle", subtitle: "Rest and boundaries count as progress", symbol: "moon.zzz.fill"),
+            .init(id: "overcoming_workaholism", title: "Work less (anti-hustle)", subtitle: "Working < 8h and resting is a win", symbol: "moon.zzz.fill"),
             .init(id: "getting_out_of_slump", title: "Get out of a slump", subtitle: "Gentle structure, no shame", symbol: "sun.max.fill"),
             .init(id: "socializing_more", title: "Show up socially", subtitle: "Small connections, consistently", symbol: "person.3.fill"),
             .init(id: "better_routine", title: "Steadier routine", subtitle: "Tiny habits that stick", symbol: "calendar"),

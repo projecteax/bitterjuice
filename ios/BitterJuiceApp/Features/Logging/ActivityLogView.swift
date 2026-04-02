@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct ActivityLogView: View {
-    @State private var category = "work"
     @State private var selectedActivityId = "general"
     @State private var durationPreset: DurationPreset = .min30to60
     @State private var note = ""
@@ -19,14 +18,6 @@ struct ActivityLogView: View {
     @State private var isNoteOpen = false
     private let repository = BitterJuiceRepository()
     private let r2UploadService = R2UploadService()
-    private let categories: [(String, String)] = [
-        ("work", "💼"),
-        ("rest", "🛋️"),
-        ("mental", "🧠"),
-        ("physical", "🏃"),
-        ("social", "🫂"),
-        ("survival", "🧃")
-    ]
     private let moods = ["🔥", "😌", "😤", "🥱", "🤩", "🧠"]
 
     private enum ActivityMode: String, CaseIterable, Identifiable {
@@ -68,40 +59,79 @@ struct ActivityLogView: View {
     }
 
     private let activities: [ActivityItem] = [
-        // Work
-        .init(id: "deep_work", title: "Deep work", emoji: "🎯", category: "work"),
-        .init(id: "emails", title: "Emails", emoji: "📧", category: "work"),
-        .init(id: "admin", title: "Admin", emoji: "🗂️", category: "work"),
-        .init(id: "meeting", title: "Meeting", emoji: "🗣️", category: "work"),
-        .init(id: "study", title: "Study", emoji: "📚", category: "work"),
-        // Rest
-        .init(id: "nap", title: "Nap", emoji: "😴", category: "rest"),
-        .init(id: "relax", title: "Relax", emoji: "🛋️", category: "rest"),
-        .init(id: "walk", title: "Walk", emoji: "🚶", category: "rest"),
-        // Mental
-        .init(id: "journaling", title: "Journaling", emoji: "📓", category: "mental"),
-        .init(id: "meditation", title: "Meditation", emoji: "🧘", category: "mental"),
-        .init(id: "therapy", title: "Therapy", emoji: "🫶", category: "mental"),
-        // Physical
-        .init(id: "sport", title: "Sport", emoji: "🏃", category: "physical"),
-        .init(id: "gym", title: "Strength", emoji: "🏋️", category: "physical"),
-        .init(id: "yoga", title: "Yoga", emoji: "🧘‍♀️", category: "physical"),
-        .init(id: "cycling", title: "Cycling", emoji: "🚴", category: "physical"),
+        // Sport (category)
+        .init(id: "running", title: "Running", emoji: "🏃", category: "sport"),
+        .init(id: "cycling", title: "Cycling", emoji: "🚴", category: "sport"),
+        .init(id: "rollerskiing", title: "Rollerskiing", emoji: "🎿", category: "sport"),
+        .init(id: "swimming", title: "Swimming", emoji: "🏊", category: "sport"),
+        .init(id: "tennis", title: "Tennis", emoji: "🎾", category: "sport"),
+        .init(id: "volleyball", title: "Volleyball", emoji: "🏐", category: "sport"),
+        .init(id: "gym", title: "Gym", emoji: "🏋️", category: "sport"),
+        .init(id: "yoga", title: "Yoga", emoji: "🧘‍♀️", category: "sport"),
+        .init(id: "sport_other", title: "Other", emoji: "✨", category: "sport"),
+
+        // Creative (category)
+        .init(id: "painting", title: "Painting", emoji: "🎨", category: "creative"),
+        .init(id: "drawing", title: "Drawing", emoji: "✏️", category: "creative"),
+        .init(id: "playing_music", title: "Playing music", emoji: "🎵", category: "creative"),
+        .init(id: "writing", title: "Writing", emoji: "📝", category: "creative"),
+        .init(id: "renovations", title: "Renovations", emoji: "🛠️", category: "creative"),
+        .init(id: "decoupage", title: "Decoupage", emoji: "🧩", category: "creative"),
+        .init(id: "creative_other", title: "Other", emoji: "✨", category: "creative"),
+
+        // Work (category)
+        .init(id: "worked_less_than_8h", title: "Worked < 8h", emoji: "🌙", category: "work"),
+        .init(id: "low_priority_tasks", title: "Low priority tasks", emoji: "🫧", category: "work"),
+        .init(id: "work_other", title: "Other", emoji: "✨", category: "work"),
+
+        // Recovery (category) — not the “top” category, but present
+        .init(id: "journaling", title: "Journaling", emoji: "📓", category: "recovery"),
+        .init(id: "walk", title: "Walk", emoji: "🚶", category: "recovery"),
+        .init(id: "reading_book", title: "Reading book", emoji: "📖", category: "recovery"),
+        .init(id: "meditation", title: "Meditation", emoji: "🧘", category: "recovery"),
+
+        // Life / maintenance (still useful)
+        .init(id: "cooking", title: "Cooking", emoji: "🍳", category: "life"),
+        .init(id: "cleaning", title: "Cleaning", emoji: "🧼", category: "life"),
+        .init(id: "groceries", title: "Groceries", emoji: "🛒", category: "life"),
+
         // Social
         .init(id: "family_time", title: "Family time", emoji: "🏡", category: "social"),
         .init(id: "hangout", title: "Hangout", emoji: "☕️", category: "social"),
         .init(id: "call", title: "Call", emoji: "📞", category: "social"),
-        // Survival
-        .init(id: "cooking", title: "Cooking", emoji: "🍳", category: "survival"),
-        .init(id: "cleaning", title: "Cleaning", emoji: "🧼", category: "survival"),
-        .init(id: "groceries", title: "Groceries", emoji: "🛒", category: "survival"),
-        .init(id: "general", title: "Something else", emoji: "✨", category: "work")
+
+        .init(id: "general", title: "Something else", emoji: "✨", category: "other")
     ]
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    sectionCard(title: "Pick activity") {
+                        Picker("Mode", selection: $activityMode) {
+                            ForEach(ActivityMode.allCases) { mode in
+                                Text(mode.rawValue).tag(mode)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+
+                        if activityMode == .latest, recentActivityIds.isEmpty {
+                            Text("Nothing here yet — once you log a few activities, your latest picks will show up.")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            activityPicksGrid
+                        }
+
+                        Button {
+                            isActivityPickerOpen = true
+                        } label: {
+                            Label("More…", systemImage: "square.grid.2x2")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+
                     sectionCard(title: "How did it feel?") {
                         HStack(spacing: 12) {
                             ForEach(moods, id: \.self) { mood in
@@ -117,45 +147,6 @@ struct ActivityLogView: View {
                                 .buttonStyle(.plain)
                             }
                         }
-                    }
-
-                    sectionCard(title: "What did you do?") {
-                        LazyVGrid(columns: [GridItem(.adaptive(minimum: 96), spacing: 10)], spacing: 10) {
-                            ForEach(categories, id: \.0) { item in
-                                Button {
-                                    category = item.0
-                                } label: {
-                                    VStack(spacing: 6) {
-                                        Text(item.1).font(.title3)
-                                        Text(item.0.capitalized).font(.caption.weight(.semibold))
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 10)
-                                    .background(category == item.0 ? Color.purple.opacity(0.22) : Color.gray.opacity(0.10))
-                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    }
-
-                    sectionCard(title: "Pick activity") {
-                        Picker("Mode", selection: $activityMode) {
-                            ForEach(ActivityMode.allCases) { mode in
-                                Text(mode.rawValue).tag(mode)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-
-                        activityPicksGrid
-
-                        Button {
-                            isActivityPickerOpen = true
-                        } label: {
-                            Label("More…", systemImage: "square.grid.2x2")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
                     }
 
                     sectionCard(title: "Duration") {
@@ -266,7 +257,7 @@ struct ActivityLogView: View {
                                 let composedNote = "\(selectedMood) \(activityTitle)" + (note.isEmpty ? "" : " — \(note)")
                                 try await repository.logActivity(
                                     crewIds: Array(selectedCrewIds),
-                                    category: category,
+                                    category: "activity",
                                     interestTagId: selectedActivityId,
                                     durationMinutes: durationPreset.minutes,
                                     note: composedNote,
@@ -315,7 +306,6 @@ struct ActivityLogView: View {
             }
             .sheet(isPresented: $isActivityPickerOpen) {
                 ActivityPickerSheet(
-                    category: $category,
                     selectedActivityId: $selectedActivityId,
                     activities: activities
                 )
@@ -359,7 +349,7 @@ struct ActivityLogView: View {
     }
 
     private var activityPicksGrid: some View {
-        let items = activityItemsForMode.filter { $0.category == category }
+        let items = activityItemsForMode
         return LazyVGrid(columns: [GridItem(.adaptive(minimum: 110), spacing: 10)], spacing: 10) {
             ForEach(items, id: \.id) { item in
                 let isOn = selectedActivityId == item.id
@@ -391,13 +381,21 @@ struct ActivityLogView: View {
     private var activityItemsForMode: [ActivityItem] {
         switch activityMode {
         case .myPicks:
-            let ids = Set(topActivityIds)
-            let picked = activities.filter { ids.contains($0.id) }
-            return picked.isEmpty ? activities : picked
+            let ids: [String] = [
+                "worked_less_than_8h",
+                "walk", "reading_book", "meditation",
+                "running", "gym", "yoga",
+                "drawing", "playing_music",
+                "cooking", "cleaning"
+            ]
+            let picked = ids.compactMap { id in activities.first(where: { $0.id == id }) }
+            return picked
         case .latest:
+            // For brand-new users this should be empty.
+            guard !recentActivityIds.isEmpty else { return [] }
             let ids = Set(recentActivityIds)
             let picked = activities.filter { ids.contains($0.id) }
-            return picked.isEmpty ? activities : picked
+            return picked
         case .all:
             return activities
         }
@@ -454,7 +452,6 @@ struct ActivityLogView: View {
 
 private struct ActivityPickerSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @Binding var category: String
     @Binding var selectedActivityId: String
     let activities: [ActivityLogView.ActivityItem]
     @State private var query = ""
@@ -470,7 +467,6 @@ private struct ActivityPickerSheet: View {
                     Section(section.title.capitalized) {
                         ForEach(section.items, id: \.id) { item in
                             Button {
-                                category = item.category
                                 selectedActivityId = item.id
                                 dismiss()
                             } label: {
@@ -513,7 +509,7 @@ private struct ActivityPickerSheet: View {
 
     private var groupedCategories: [CategorySection] {
         let byCat = Dictionary(grouping: filtered, by: \.category)
-        let order = ["work", "physical", "mental", "rest", "social", "survival"]
+        let order = ["sport", "creative", "work", "recovery", "life", "social", "other"]
         return order.compactMap { cat in
             guard let items = byCat[cat], !items.isEmpty else { return nil }
             return CategorySection(title: cat, items: items.sorted { $0.title < $1.title })
