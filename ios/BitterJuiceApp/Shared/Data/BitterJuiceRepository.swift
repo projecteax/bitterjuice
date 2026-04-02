@@ -4,9 +4,15 @@ import Supabase
 struct FeedEventItem: Identifiable {
     let id: String
     let eventType: String
-    let actorId: String
+    let actorUserId: String
     let createdAt: Date
     let payload: [String: Any]
+}
+
+struct PublicProfileItem: Identifiable, Sendable {
+    let id: String
+    let username: String
+    let avatarKey: String?
 }
 
 struct RewardItem: Identifiable {
@@ -94,6 +100,7 @@ final class BitterJuiceRepository {
         let interest_tag_id: String
         let duration_minutes: Int
         let note: String
+        let proof_asset_key: String?
     }
 
     private struct ProfileStatsRow: Decodable {
@@ -101,6 +108,51 @@ final class BitterJuiceRepository {
         let xp_balance: Int
         let level: Int
         let streak_days: Int
+    }
+
+    private struct PublicProfileRow: Decodable {
+        let id: UUID
+        let username: String
+        let avatar_key: String?
+    }
+
+    func publicAvatarURL(for avatarKey: String) -> URL? {
+        guard !avatarKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        // For public buckets: https://<ref>.supabase.co/storage/v1/object/public/<bucket>/<path>
+        return try? client.storage.from("avatars").getPublicURL(path: avatarKey)
+    }
+
+    func uploadMyAvatar(imageData: Data, fileExtension: String) async throws -> String {
+        let session = try await client.auth.session
+        guard !session.isExpired else {
+            throw NSError(domain: "BitterJuice", code: -3, userInfo: [NSLocalizedDescriptionKey: "Session expired — sign in again."])
+        }
+        let uid = session.user.id.uuidString
+        let ext = fileExtension.lowercased().replacingOccurrences(of: ".", with: "")
+        let key = "\(uid)/avatar.\(ext.isEmpty ? "jpg" : ext)"
+
+        // Upload (overwrite) to Storage
+        _ = try await client.storage
+            .from("avatars")
+            .upload(
+                key,
+                data: imageData,
+                options: FileOptions(
+                    cacheControl: "3600",
+                    contentType: ext == "png" ? "image/png" : "image/jpeg",
+                    upsert: true
+                )
+            )
+
+        // Save reference on profile
+        struct AvatarUpdate: Encodable { let avatar_key: String }
+        try await client
+            .from("profiles")
+            .update(AvatarUpdate(avatar_key: key))
+            .eq("id", value: uid)
+            .execute()
+
+        return key
     }
 
     private struct FeedReactionInsert: Encodable {
@@ -131,6 +183,131 @@ final class BitterJuiceRepository {
 
     private struct SquadMemberLookup: Decodable {
         let squad_id: UUID
+    }
+
+    // MARK: - Challenges
+
+    struct ChallengeItem: Identifiable, Sendable {
+        let id: String
+        let createdAt: Date
+        let createdBy: String
+        let inviteeId: String
+        let crewId: String?
+        let status: String
+        let activityPickId: String
+        let goalTarget: Int
+        let startAt: Date
+        let endAt: Date
+        let prizeProposal: String
+        let note: String
+    }
+
+    private struct ChallengeRow: Decodable {
+        let id: UUID
+        let created_at: Date
+        let created_by: UUID
+        let invitee_id: UUID
+        let crew_id: UUID?
+        let status: String
+        let activity_pick_id: String
+        let goal_target: Int
+        let start_at: Date
+        let end_at: Date
+        let prize_proposal: String
+        let note: String
+    }
+
+    private struct ChallengeInsert: Encodable {
+        let created_by: UUID
+        let invitee_id: UUID
+        let crew_id: UUID?
+        let status: String
+        let activity_pick_id: String
+        let goal_target: Int
+        let start_at: Date
+        let end_at: Date
+        let prize_proposal: String
+        let note: String
+    }
+
+    private struct ChallengeStatusUpdate: Encodable {
+        let status: String
+    }
+
+    func fetchMyChallenges(limit: Int = 50) async throws -> [ChallengeItem] {
+        let session = try await client.auth.session
+        guard !session.isExpired else {
+            throw NSError(domain: "BitterJuice", code: -3, userInfo: [NSLocalizedDescriptionKey: "Session expired — sign in again."])
+        }
+        let uid = session.user.id.uuidString
+
+        // Fetch where I'm creator OR invitee
+        let rows: [ChallengeRow] = try await client
+            .from("challenges")
+            .select()
+            .or("created_by.eq.\(uid),invitee_id.eq.\(uid)")
+            .order("created_at", ascending: false)
+            .limit(limit)
+            .execute()
+            .value
+
+        return rows.map {
+            ChallengeItem(
+                id: $0.id.uuidString,
+                createdAt: $0.created_at,
+                createdBy: $0.created_by.uuidString,
+                inviteeId: $0.invitee_id.uuidString,
+                crewId: $0.crew_id?.uuidString,
+                status: $0.status,
+                activityPickId: $0.activity_pick_id,
+                goalTarget: $0.goal_target,
+                startAt: $0.start_at,
+                endAt: $0.end_at,
+                prizeProposal: $0.prize_proposal,
+                note: $0.note
+            )
+        }
+    }
+
+    func createChallenge(
+        inviteeId: String,
+        crewId: String?,
+        activityPickId: String,
+        goalTarget: Int,
+        startAt: Date,
+        endAt: Date,
+        prizeProposal: String,
+        note: String
+    ) async throws {
+        let session = try await client.auth.session
+        guard !session.isExpired else {
+            throw NSError(domain: "BitterJuice", code: -3, userInfo: [NSLocalizedDescriptionKey: "Session expired — sign in again."])
+        }
+        guard let inviteeUUID = UUID(uuidString: inviteeId) else {
+            throw NSError(domain: "BitterJuice", code: -2, userInfo: [NSLocalizedDescriptionKey: "Invalid invitee id."])
+        }
+        let crewUUID = crewId.flatMap(UUID.init(uuidString:))
+        let row = ChallengeInsert(
+            created_by: session.user.id,
+            invitee_id: inviteeUUID,
+            crew_id: crewUUID,
+            status: "pending",
+            activity_pick_id: activityPickId,
+            goal_target: max(1, goalTarget),
+            start_at: startAt,
+            end_at: endAt,
+            prize_proposal: prizeProposal,
+            note: note
+        )
+        try await client.from("challenges").insert(row).execute()
+    }
+
+    func setChallengeStatus(challengeId: String, status: String) async throws {
+        try await client
+            .from("challenges")
+            .update(ChallengeStatusUpdate(status: status))
+            .eq("id", value: challengeId)
+            .execute()
     }
 
     func saveDailyCalibration(
@@ -277,13 +454,77 @@ final class BitterJuiceRepository {
         }
         let rows: [ActivityLogRow] = try await client
             .from("activity_logs")
-            .select("id,created_at,category,interest_tag_id,duration_minutes,note")
+            .select("id,created_at,category,interest_tag_id,duration_minutes,note,proof_asset_key")
             .eq("user_id", value: session.user.id.uuidString)
             .order("created_at", ascending: false)
             .limit(limit)
             .execute()
             .value
         return rows.map { ($0.category, $0.interest_tag_id, $0.created_at) }
+    }
+
+    struct ActivityLogItem: Identifiable, Sendable {
+        let id: String
+        let createdAt: Date
+        let interestTagId: String
+        let durationMinutes: Int
+        let note: String
+        let proofAssetKey: String?
+    }
+
+    func fetchMyActivityLogs(limit: Int = 100) async throws -> [ActivityLogItem] {
+        let session = try await client.auth.session
+        guard !session.isExpired else {
+            throw NSError(domain: "BitterJuice", code: -3, userInfo: [NSLocalizedDescriptionKey: "Session expired — sign in again."])
+        }
+        let rows: [ActivityLogRow] = try await client
+            .from("activity_logs")
+            .select("id,created_at,category,interest_tag_id,duration_minutes,note,proof_asset_key")
+            .eq("user_id", value: session.user.id.uuidString)
+            .order("created_at", ascending: false)
+            .limit(limit)
+            .execute()
+            .value
+        return rows.map {
+            ActivityLogItem(
+                id: $0.id.uuidString,
+                createdAt: $0.created_at,
+                interestTagId: $0.interest_tag_id,
+                durationMinutes: $0.duration_minutes,
+                note: $0.note,
+                proofAssetKey: $0.proof_asset_key
+            )
+        }
+    }
+
+    func updateMyActivityLog(id: String, durationMinutes: Int, note: String) async throws {
+        struct UpdateRow: Encodable {
+            let duration_minutes: Int
+            let note: String
+        }
+        let session = try await client.auth.session
+        guard !session.isExpired else {
+            throw NSError(domain: "BitterJuice", code: -3, userInfo: [NSLocalizedDescriptionKey: "Session expired — sign in again."])
+        }
+        try await client
+            .from("activity_logs")
+            .update(UpdateRow(duration_minutes: durationMinutes, note: note))
+            .eq("id", value: id)
+            .eq("user_id", value: session.user.id.uuidString)
+            .execute()
+    }
+
+    func deleteMyActivityLog(id: String) async throws {
+        let session = try await client.auth.session
+        guard !session.isExpired else {
+            throw NSError(domain: "BitterJuice", code: -3, userInfo: [NSLocalizedDescriptionKey: "Session expired — sign in again."])
+        }
+        try await client
+            .from("activity_logs")
+            .delete()
+            .eq("id", value: id)
+            .eq("user_id", value: session.user.id.uuidString)
+            .execute()
     }
 
     func fetchProfileSnapshot(userId: String) async throws -> ProfileSnapshot? {
@@ -325,11 +566,23 @@ final class BitterJuiceRepository {
             FeedEventItem(
                 id: row.id.uuidString,
                 eventType: row.event_type,
-                actorId: Self.displayActorId(row.actor_id),
+                actorUserId: row.actor_id.uuidString,
                 createdAt: row.created_at,
                 payload: Self.payloadToDict(row.payload)
             )
         }
+    }
+
+    func fetchPublicProfiles(userIds: [String]) async throws -> [PublicProfileItem] {
+        let unique = Array(Set(userIds)).filter { UUID(uuidString: $0) != nil }
+        guard !unique.isEmpty else { return [] }
+        let rows: [PublicProfileRow] = try await client
+            .from("profiles")
+            .select("id,username,avatar_key")
+            .in("id", values: unique.map { $0 as any PostgrestFilterValue })
+            .execute()
+            .value
+        return rows.map { PublicProfileItem(id: $0.id.uuidString, username: $0.username, avatarKey: $0.avatar_key) }
     }
 
     func sendReaction(feedEventId: String, reaction: String) async throws {
@@ -481,11 +734,6 @@ final class BitterJuiceRepository {
             .from("squad_members")
             .insert(SquadMemberRow(squad_id: sid, user_id: session.user.id, role: "member"))
             .execute()
-    }
-
-    private static func displayActorId(_ id: UUID) -> String {
-        let s = id.uuidString
-        return String(s.prefix(8))
     }
 
     private static func payloadToDict(_ object: JSONObject?) -> [String: Any] {

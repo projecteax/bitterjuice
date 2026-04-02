@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ActivityLogView: View {
+    @State private var mode: Mode = .log
     @State private var selectedActivityId = "general"
     @State private var durationPreset: DurationPreset = .min30to60
     @State private var note = ""
@@ -16,6 +17,14 @@ struct ActivityLogView: View {
     @State private var activityMode: ActivityMode = .myPicks
     @State private var isActivityPickerOpen = false
     @State private var isNoteOpen = false
+    @State private var history: [BitterJuiceRepository.ActivityLogItem] = []
+    @State private var isLoadingHistory = false
+    @State private var historyStatus = ""
+    @State private var editingLog: BitterJuiceRepository.ActivityLogItem?
+    @State private var challenges: [BitterJuiceRepository.ChallengeItem] = []
+    @State private var challengesStatus = ""
+    @State private var isLoadingChallenges = false
+    @State private var now = Date()
     private let repository = BitterJuiceRepository()
     private let r2UploadService = R2UploadService()
     private let moods = ["🔥", "😌", "😤", "🥱", "🤩", "🧠"]
@@ -103,192 +112,216 @@ struct ActivityLogView: View {
         .init(id: "general", title: "Something else", emoji: "✨", category: "other")
     ]
 
+    private enum Mode: String, CaseIterable, Identifiable {
+        case log = "Log"
+        case history = "History"
+        case challenges = "Challenges"
+        var id: String { rawValue }
+    }
+
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 16) {
-                    sectionCard(title: "Pick activity") {
-                        Picker("Mode", selection: $activityMode) {
-                            ForEach(ActivityMode.allCases) { mode in
-                                Text(mode.rawValue).tag(mode)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-
-                        if activityMode == .latest, recentActivityIds.isEmpty {
-                            Text("Nothing here yet — once you log a few activities, your latest picks will show up.")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        } else {
-                            activityPicksGrid
-                        }
-
-                        Button {
-                            isActivityPickerOpen = true
-                        } label: {
-                            Label("More…", systemImage: "square.grid.2x2")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-                    }
-
-                    sectionCard(title: "How did it feel?") {
-                        HStack(spacing: 12) {
-                            ForEach(moods, id: \.self) { mood in
-                                Button {
-                                    selectedMood = mood
-                                } label: {
-                                    Text(mood)
-                                        .font(.title2)
-                                        .padding(8)
-                                        .background(selectedMood == mood ? Color.pink.opacity(0.25) : Color.gray.opacity(0.12))
-                                        .clipShape(Circle())
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    }
-
-                    sectionCard(title: "Duration") {
-                        HStack(spacing: 10) {
-                            ForEach(DurationPreset.allCases) { preset in
-                                let isOn = durationPreset == preset
-                                Button {
-                                    durationPreset = preset
-                                } label: {
-                                    VStack(spacing: 2) {
-                                        Text(preset.rawValue)
-                                            .font(.subheadline.weight(.semibold))
-                                        Text(preset.subtitle)
-                                            .font(.caption2)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 10)
-                                    .background(isOn ? Color.pink.opacity(0.20) : Color.gray.opacity(0.10))
-                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                    }
-
-                    sectionCard(title: "My circles") {
-                        if isLoadingCrews {
-                            HStack(spacing: 10) {
-                                ProgressView()
-                                Text("Loading your circles…")
-                                    .font(.footnote)
-                                    .foregroundStyle(.secondary)
-                            }
-                        } else if crews.isEmpty {
-                            Text("You’re not in a crew yet. You can still log privately — join a crew to share with friends.")
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                        } else {
-                            VStack(alignment: .leading, spacing: 10) {
-                                Text("Shared by default to all your crews. Toggle off if needed.")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                                ForEach(crews) { crew in
-                                    Toggle(crew.name, isOn: Binding(
-                                        get: { selectedCrewIds.contains(crew.id) },
-                                        set: { isOn in
-                                            if isOn { selectedCrewIds.insert(crew.id) } else { selectedCrewIds.remove(crew.id) }
-                                        }
-                                    ))
-                                }
-                            }
-                        }
-                    }
-
-                    sectionCard(title: "Note (optional)") {
-                        Button {
-                            isNoteOpen = true
-                        } label: {
-                            HStack {
-                                Label(note.isEmpty ? "Add a note" : "Edit note", systemImage: "note.text")
-                                Spacer()
-                                Image(systemName: "chevron.right")
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .buttonStyle(.plain)
-
-                        if !note.isEmpty {
-                            Text(note)
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    }
-
-                    sectionCard(title: "Proof & XP") {
-                        HStack {
-                            Label("Estimated XP", systemImage: "sparkles")
-                                .font(.subheadline.weight(.semibold))
-                            Spacer()
-                            Text("\(estimatedXp)")
-                                .font(.headline)
-                        }
-                        Button {
-                            Task {
-                                do {
-                                    let token = try await r2UploadService.requestUploadToken(mediaType: "proof", mimeType: "text/plain")
-                                    let placeholderFile = Data("proof".utf8)
-                                    try await r2UploadService.upload(data: placeholderFile, mimeType: "text/plain", token: token)
-                                    proofAssetKey = token.key
-                                    status = "Proof file uploaded (stored in R2) ✅"
-                                } catch {
-                                    status = BitterJuiceRepository.userFacingSupabaseMessage(error)
-                                }
-                            }
-                        } label: {
-                            Label(proofAssetKey == nil ? "Upload proof file (optional)" : "Proof attached", systemImage: "paperclip.circle.fill")
-                                .frame(maxWidth: .infinity)
-                        }
-                        .buttonStyle(.bordered)
-                    }
-
-                    Button {
-                        Task {
-                            do {
-                                let activityTitle = activities.first(where: { $0.id == selectedActivityId })?.title ?? selectedActivityId
-                                let composedNote = "\(selectedMood) \(activityTitle)" + (note.isEmpty ? "" : " — \(note)")
-                                try await repository.logActivity(
-                                    crewIds: Array(selectedCrewIds),
-                                    category: "activity",
-                                    interestTagId: selectedActivityId,
-                                    durationMinutes: durationPreset.minutes,
-                                    note: composedNote,
-                                    proofAssetKey: proofAssetKey
-                                )
-                                if selectedCrewIds.isEmpty {
-                                    status = "Saved to your activity history ✅"
-                                } else {
-                                    status = "Saved + shared to your crews 🚀"
-                                }
-                            } catch {
-                                status = BitterJuiceRepository.userFacingSupabaseMessage(error)
-                            }
-                        }
-                    } label: {
-                        Label("Log it 🚀", systemImage: "checkmark.circle.fill")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 6)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.pink)
-
-                    if !status.isEmpty {
-                        Text(status)
-                            .font(.footnote.weight(.semibold))
-                            .foregroundStyle(status.contains("✅") || status.contains("Nice") ? .green : .secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(spacing: 12) {
+                Picker("Mode", selection: $mode) {
+                    ForEach(Mode.allCases) { m in
+                        Text(m.rawValue).tag(m)
                     }
                 }
-                .padding()
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+                .padding(.top, 4)
+
+                Group {
+                    if mode == .history {
+                        historyView
+                    } else if mode == .challenges {
+                        challengesView
+                    } else {
+                        ScrollView {
+                            VStack(spacing: 16) {
+                                sectionCard(title: "Pick activity") {
+                                    Picker("Mode", selection: $activityMode) {
+                                        ForEach(ActivityMode.allCases) { m in
+                                            Text(m.rawValue).tag(m)
+                                        }
+                                    }
+                                    .pickerStyle(.segmented)
+
+                                    if activityMode == .latest, recentActivityIds.isEmpty {
+                                        Text("Nothing here yet — once you log a few activities, your latest picks will show up.")
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                    } else {
+                                        activityPicksGrid
+                                    }
+
+                                    Button {
+                                        isActivityPickerOpen = true
+                                    } label: {
+                                        Label("More…", systemImage: "square.grid.2x2")
+                                            .frame(maxWidth: .infinity)
+                                    }
+                                    .buttonStyle(.bordered)
+                                }
+
+                                sectionCard(title: "How did it feel?") {
+                                    HStack(spacing: 12) {
+                                        ForEach(moods, id: \.self) { mood in
+                                            Button {
+                                                selectedMood = mood
+                                            } label: {
+                                                Text(mood)
+                                                    .font(.title2)
+                                                    .padding(8)
+                                                    .background(selectedMood == mood ? Color.pink.opacity(0.25) : Color.gray.opacity(0.12))
+                                                    .clipShape(Circle())
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+                                }
+
+                                sectionCard(title: "Duration") {
+                                    HStack(spacing: 10) {
+                                        ForEach(DurationPreset.allCases) { preset in
+                                            let isOn = durationPreset == preset
+                                            Button {
+                                                durationPreset = preset
+                                            } label: {
+                                                VStack(spacing: 2) {
+                                                    Text(preset.rawValue)
+                                                        .font(.subheadline.weight(.semibold))
+                                                    Text(preset.subtitle)
+                                                        .font(.caption2)
+                                                        .foregroundStyle(.secondary)
+                                                }
+                                                .frame(maxWidth: .infinity)
+                                                .padding(.vertical, 10)
+                                                .background(isOn ? Color.pink.opacity(0.20) : Color.gray.opacity(0.10))
+                                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                            }
+                                            .buttonStyle(.plain)
+                                        }
+                                    }
+                                }
+
+                                sectionCard(title: "My circles") {
+                                    if isLoadingCrews {
+                                        HStack(spacing: 10) {
+                                            ProgressView()
+                                            Text("Loading your circles…")
+                                                .font(.footnote)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    } else if crews.isEmpty {
+                                        Text("You’re not in a crew yet. You can still log privately — join a crew to share with friends.")
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                    } else {
+                                        VStack(alignment: .leading, spacing: 10) {
+                                            Text("Shared by default to all your crews. Toggle off if needed.")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                            ForEach(crews) { crew in
+                                                Toggle(crew.name, isOn: Binding(
+                                                    get: { selectedCrewIds.contains(crew.id) },
+                                                    set: { isOn in
+                                                        if isOn { selectedCrewIds.insert(crew.id) } else { selectedCrewIds.remove(crew.id) }
+                                                    }
+                                                ))
+                                            }
+                                        }
+                                    }
+                                }
+
+                                sectionCard(title: "Note (optional)") {
+                                    Button {
+                                        isNoteOpen = true
+                                    } label: {
+                                        HStack {
+                                            Label(note.isEmpty ? "Add a note" : "Edit note", systemImage: "note.text")
+                                            Spacer()
+                                            Image(systemName: "chevron.right")
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                    .buttonStyle(.plain)
+
+                                    if !note.isEmpty {
+                                        Text(note)
+                                            .font(.footnote)
+                                            .foregroundStyle(.secondary)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                    }
+                                }
+
+                                sectionCard(title: "Proof & XP") {
+                                    HStack {
+                                        Label("Estimated XP", systemImage: "sparkles")
+                                            .font(.subheadline.weight(.semibold))
+                                        Spacer()
+                                        Text("\(estimatedXp)")
+                                            .font(.headline)
+                                    }
+                                    Button {
+                                        Task {
+                                            do {
+                                                let token = try await r2UploadService.requestUploadToken(mediaType: "proof", mimeType: "text/plain")
+                                                let placeholderFile = Data("proof".utf8)
+                                                try await r2UploadService.upload(data: placeholderFile, mimeType: "text/plain", token: token)
+                                                proofAssetKey = token.key
+                                                status = "Proof file uploaded (stored in R2) ✅"
+                                            } catch {
+                                                status = BitterJuiceRepository.userFacingSupabaseMessage(error)
+                                            }
+                                        }
+                                    } label: {
+                                        Label(proofAssetKey == nil ? "Upload proof file (optional)" : "Proof attached", systemImage: "paperclip.circle.fill")
+                                            .frame(maxWidth: .infinity)
+                                    }
+                                    .buttonStyle(.bordered)
+                                }
+
+                                Button {
+                                    Task {
+                                        do {
+                                            let activityTitle = activities.first(where: { $0.id == selectedActivityId })?.title ?? selectedActivityId
+                                            let composedNote = "\(selectedMood) \(activityTitle)" + (note.isEmpty ? "" : " — \(note)")
+                                            try await repository.logActivity(
+                                                crewIds: Array(selectedCrewIds),
+                                                category: "activity",
+                                                interestTagId: selectedActivityId,
+                                                durationMinutes: durationPreset.minutes,
+                                                note: composedNote,
+                                                proofAssetKey: proofAssetKey
+                                            )
+                                            status = selectedCrewIds.isEmpty
+                                                ? "Saved to your activity history ✅"
+                                                : "Saved + shared to your crews 🚀"
+                                        } catch {
+                                            status = BitterJuiceRepository.userFacingSupabaseMessage(error)
+                                        }
+                                    }
+                                } label: {
+                                    Label("Log it 🚀", systemImage: "checkmark.circle.fill")
+                                        .font(.headline)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 6)
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(.pink)
+
+                                if !status.isEmpty {
+                                    Text(status)
+                                        .font(.footnote.weight(.semibold))
+                                        .foregroundStyle(status.contains("✅") || status.contains("Nice") ? .green : .secondary)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                            }
+                            .padding()
+                        }
+                    }
+                }
             }
             .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Log Activity")
@@ -303,6 +336,20 @@ struct ActivityLogView: View {
             .task {
                 await refreshCrews()
                 await refreshRecents()
+                if mode == .history {
+                    await refreshHistory()
+                }
+                if mode == .challenges {
+                    await refreshChallenges()
+                }
+            }
+            .onChange(of: mode) { _, newValue in
+                if newValue == .history {
+                    Task { await refreshHistory() }
+                }
+                if newValue == .challenges {
+                    Task { await refreshChallenges() }
+                }
             }
             .sheet(isPresented: $isActivityPickerOpen) {
                 ActivityPickerSheet(
@@ -328,6 +375,21 @@ struct ActivityLogView: View {
                     }
                 }
                 .presentationDetents([.medium, .large])
+            }
+            .sheet(item: $editingLog) { item in
+                EditLogSheet(
+                    item: item,
+                    onSave: { minutes, note in
+                        Task {
+                            do {
+                                try await repository.updateMyActivityLog(id: item.id, durationMinutes: minutes, note: note)
+                                await refreshHistory()
+                            } catch {
+                                historyStatus = BitterJuiceRepository.userFacingSupabaseMessage(error)
+                            }
+                        }
+                    }
+                )
             }
         }
     }
@@ -448,6 +510,230 @@ struct ActivityLogView: View {
             }
         }
     }
+
+    private var historyView: some View {
+        List {
+            if isLoadingHistory {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("Loading your logs…")
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if !historyStatus.isEmpty {
+                Text(historyStatus)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            ForEach(history) { item in
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text(activityTitle(for: item.interestTagId))
+                            .font(.headline)
+                        Spacer()
+                        Text(relativeDate(item.createdAt))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Text("\(item.durationMinutes) min")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    if !item.note.isEmpty {
+                        Text(item.note)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                }
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    Button {
+                        editingLog = item
+                    } label: {
+                        Label("Edit", systemImage: "pencil")
+                    }
+                    .tint(.blue)
+
+                    Button(role: .destructive) {
+                        Task {
+                            do {
+                                try await repository.deleteMyActivityLog(id: item.id)
+                                await refreshHistory()
+                            } catch {
+                                historyStatus = BitterJuiceRepository.userFacingSupabaseMessage(error)
+                            }
+                        }
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+    }
+
+    private func refreshHistory() async {
+        isLoadingHistory = true
+        defer { isLoadingHistory = false }
+        do {
+            let logs = try await repository.fetchMyActivityLogs(limit: 120)
+            await MainActor.run {
+                history = logs
+                historyStatus = logs.isEmpty ? "No logs yet — start with a tiny win." : ""
+            }
+        } catch {
+            await MainActor.run {
+                history = []
+                historyStatus = BitterJuiceRepository.userFacingSupabaseMessage(error)
+            }
+        }
+    }
+
+    private func activityTitle(for id: String) -> String {
+        activities.first(where: { $0.id == id })?.title ?? id
+    }
+
+    private func relativeDate(_ date: Date) -> String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .short
+        return formatter.localizedString(for: date, relativeTo: Date())
+    }
+
+    private var challengesView: some View {
+        List {
+            if isLoadingChallenges {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("Loading challenges…")
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if !challengesStatus.isEmpty {
+                Text(challengesStatus)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
+            ForEach(challenges) { ch in
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text(activityTitle(for: ch.activityPickId))
+                            .font(.headline)
+                        Spacer()
+                        Text(ch.status.capitalized)
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(ch.status == "accepted" ? .green : .secondary)
+                    }
+
+                    Text("\(relativeDate(ch.startAt)) → \(relativeDate(ch.endAt))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    if !ch.note.isEmpty {
+                        Text(ch.note)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+
+                    if !ch.prizeProposal.isEmpty {
+                        Text("Prize: \(ch.prizeProposal)")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+
+                    if ch.status == "pending" {
+                        HStack(spacing: 10) {
+                            Button("Accept") {
+                                Task { await setChallenge(ch, status: "accepted") }
+                            }
+                            .buttonStyle(.borderedProminent)
+
+                            Button("Decline", role: .destructive) {
+                                Task { await setChallenge(ch, status: "declined") }
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                    }
+                }
+                .padding(.vertical, 6)
+            }
+        }
+        .listStyle(.insetGrouped)
+        .refreshable {
+            await refreshChallenges()
+        }
+    }
+
+    private func refreshChallenges() async {
+        isLoadingChallenges = true
+        defer { isLoadingChallenges = false }
+        do {
+            let rows = try await repository.fetchMyChallenges(limit: 80)
+            await MainActor.run {
+                challenges = rows
+                challengesStatus = rows.isEmpty ? "No challenges yet — start one from the Crew tab." : ""
+            }
+        } catch {
+            await MainActor.run {
+                challenges = []
+                challengesStatus = BitterJuiceRepository.userFacingSupabaseMessage(error)
+            }
+        }
+    }
+
+    private func setChallenge(_ challenge: BitterJuiceRepository.ChallengeItem, status: String) async {
+        do {
+            try await repository.setChallengeStatus(challengeId: challenge.id, status: status)
+            await refreshChallenges()
+        } catch {
+            await MainActor.run {
+                challengesStatus = BitterJuiceRepository.userFacingSupabaseMessage(error)
+            }
+        }
+    }
+}
+
+private struct EditLogSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let item: BitterJuiceRepository.ActivityLogItem
+    let onSave: (Int, String) -> Void
+    @State private var minutes: Int
+    @State private var note: String
+
+    init(item: BitterJuiceRepository.ActivityLogItem, onSave: @escaping (Int, String) -> Void) {
+        self.item = item
+        self.onSave = onSave
+        _minutes = State(initialValue: item.durationMinutes)
+        _note = State(initialValue: item.note)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Stepper("Duration: \(minutes) min", value: $minutes, in: 1...300)
+                TextField("Note", text: $note, axis: .vertical)
+                    .lineLimit(3...8)
+            }
+            .navigationTitle("Edit log")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Save") {
+                        onSave(minutes, note)
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
 }
 
 private struct ActivityPickerSheet: View {
@@ -512,7 +798,15 @@ private struct ActivityPickerSheet: View {
         let order = ["sport", "creative", "work", "recovery", "life", "social", "other"]
         return order.compactMap { cat in
             guard let items = byCat[cat], !items.isEmpty else { return nil }
-            return CategorySection(title: cat, items: items.sorted { $0.title < $1.title })
+            return CategorySection(
+                title: cat,
+                items: items.sorted { lhs, rhs in
+                    let lhsIsOther = lhs.title == "Other" || lhs.title == "Something else"
+                    let rhsIsOther = rhs.title == "Other" || rhs.title == "Something else"
+                    if lhsIsOther != rhsIsOther { return rhsIsOther } // non-other first
+                    return lhs.title < rhs.title
+                }
+            )
         }
     }
 }

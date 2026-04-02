@@ -12,11 +12,56 @@ struct SquadFeedView: View {
     @State private var newCrewName = ""
     @State private var joinCrewId = ""
     @State private var isLoadingFeed = false
+    @State private var profileCache: [String: PublicProfileItem] = [:]
     @State private var isRefreshingCrews = false
     @State private var crewSheetError = ""
     @State private var crewSheetBusy = false
+    @State private var showChallengeSheet = false
+    @State private var challengeInviteeId = ""
+    @State private var challengePickId = "running"
+    @State private var challengeGoalTarget = 1
+    @State private var challengeStart = Date()
+    @State private var challengeEnd = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date().addingTimeInterval(7 * 86400)
+    @State private var challengePrize = ""
+    @State private var challengeNote = ""
+    @State private var challengeBusy = false
 
     private let repository = BitterJuiceRepository()
+    private let activityTitles: [String: String] = [
+        // Sport
+        "running": "Running",
+        "cycling": "Cycling",
+        "rollerskiing": "Rollerskiing",
+        "swimming": "Swimming",
+        "tennis": "Tennis",
+        "volleyball": "Volleyball",
+        "gym": "Gym",
+        "yoga": "Yoga",
+        "sport_other": "Sport (other)",
+
+        // Creative
+        "painting": "Painting",
+        "drawing": "Drawing",
+        "playing_music": "Playing music",
+        "writing": "Writing",
+        "renovations": "Renovations",
+        "decoupage": "Decoupage",
+        "creative_other": "Creative (other)",
+
+        // Work
+        "worked_less_than_8h": "Worked < 8h",
+        "low_priority_tasks": "Low priority tasks",
+        "work_other": "Work (other)",
+
+        // Recovery
+        "journaling": "Journaling",
+        "walk": "Walk",
+        "reading_book": "Reading book",
+        "meditation": "Meditation",
+
+        // Misc
+        "general": "Something else"
+    ]
 
     var body: some View {
         NavigationStack {
@@ -59,6 +104,13 @@ struct SquadFeedView: View {
                     .accessibilityLabel("Crews")
 
                     Button {
+                        showChallengeSheet = true
+                    } label: {
+                        Image(systemName: "flag.checkered")
+                    }
+                    .accessibilityLabel("Challenge")
+
+                    Button {
                         Task { await refreshCrews(); await loadFeed() }
                     } label: {
                         Image(systemName: "arrow.clockwise")
@@ -84,6 +136,9 @@ struct SquadFeedView: View {
             // fullScreenCover avoids sheet+keyboard competing for vertical layout (common source of multi‑second stalls).
             .fullScreenCover(isPresented: $showCrewSheet) {
                 juiceCrewSheet
+            }
+            .sheet(isPresented: $showChallengeSheet) {
+                challengeSheet
             }
         }
     }
@@ -377,6 +432,7 @@ struct SquadFeedView: View {
                     status = "\(loaded.count) post(s)."
                 }
             }
+            await refreshProfiles(for: loaded)
         } catch {
             await MainActor.run {
                 events = []
@@ -385,20 +441,118 @@ struct SquadFeedView: View {
         }
     }
 
-    private func feedCard(event: FeedEventItem) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(event.eventType)
-                    .font(.headline)
-                Spacer()
-                Text(relativeDate(event.createdAt))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+    private var challengeSheet: some View {
+        NavigationStack {
+            Form {
+                Section("Invite") {
+                    TextField("Friend user UUID", text: $challengeInviteeId)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    if let crew = selectedCrew {
+                        Text("Crew: \(crew.name)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Section("Goal") {
+                    Picker("Activity", selection: $challengePickId) {
+                        ForEach(activityTitles.keys.sorted(), id: \.self) { key in
+                            Text(activityTitles[key] ?? key).tag(key)
+                        }
+                    }
+                    Stepper("Target: \(challengeGoalTarget)", value: $challengeGoalTarget, in: 1...100)
+                }
+
+                Section("When") {
+                    DatePicker("Starts", selection: $challengeStart)
+                    DatePicker("Ends", selection: $challengeEnd)
+                }
+
+                Section("Prize & note") {
+                    TextField("Prize proposal (optional)", text: $challengePrize)
+                    TextField("Note (optional)", text: $challengeNote, axis: .vertical)
+                        .lineLimit(2...5)
+                }
             }
-            Text(eventMessage(event))
+            .navigationTitle("New challenge")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { showChallengeSheet = false }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(challengeBusy ? "Sending…" : "Send") {
+                        Task { await createChallenge() }
+                    }
+                    .disabled(challengeBusy || challengeInviteeId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+        .presentationDetents([.large])
+    }
+
+    private func createChallenge() async {
+        challengeBusy = true
+        defer { challengeBusy = false }
+        do {
+            try await repository.createChallenge(
+                inviteeId: challengeInviteeId.trimmingCharacters(in: .whitespacesAndNewlines),
+                crewId: selectedCrew?.id,
+                activityPickId: challengePickId,
+                goalTarget: challengeGoalTarget,
+                startAt: challengeStart,
+                endAt: challengeEnd,
+                prizeProposal: challengePrize,
+                note: challengeNote
+            )
+            await MainActor.run {
+                status = "Challenge sent ✅"
+                showChallengeSheet = false
+                challengeInviteeId = ""
+                challengePrize = ""
+                challengeNote = ""
+                challengeGoalTarget = 1
+            }
+        } catch {
+            await MainActor.run { status = BitterJuiceRepository.userFacingSupabaseMessage(error) }
+        }
+    }
+
+    private func refreshProfiles(for events: [FeedEventItem]) async {
+        let ids = Array(Set(events.map(\.actorUserId))).filter { profileCache[$0] == nil }
+        guard !ids.isEmpty else { return }
+        do {
+            let rows = try await repository.fetchPublicProfiles(userIds: ids)
+            await MainActor.run {
+                for p in rows { profileCache[p.id] = p }
+            }
+        } catch {
+            // Keep cache empty; UI falls back to short id.
+        }
+    }
+
+    private func feedCard(event: FeedEventItem) -> some View {
+        let profile = profileCache[event.actorUserId]
+        return VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                HStack(spacing: 10) {
+                    avatarView(avatarKey: profile?.avatarKey, fallbackName: profile?.username ?? shortUserId(event.actorUserId))
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(profile?.username ?? shortUserId(event.actorUserId))
+                            .font(.subheadline.weight(.semibold))
+                        Text(relativeDate(event.createdAt))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer()
+            }
+
+            Text(eventTitle(event))
+                .font(.headline)
+            Text(eventSubtitle(event))
                 .font(.subheadline)
-            Text("by \(event.actorId)")
-                .font(.caption.weight(.semibold))
                 .foregroundStyle(.secondary)
 
             HStack(spacing: 8) {
@@ -461,6 +615,69 @@ struct SquadFeedView: View {
             return "\(category.capitalized) · \(Int(minutes)) min"
         }
         return "Shared an update with the crew."
+    }
+
+    private func eventTitle(_ event: FeedEventItem) -> String {
+        // Use the pick id first (industry standard: content-first), fallback to eventType.
+        if let pickId = event.payload["interest_tag_id"] as? String,
+           let title = activityTitles[pickId] {
+            return title
+        }
+        if let category = event.payload["category"] as? String, !category.isEmpty {
+            return category.capitalized
+        }
+        return event.eventType.replacingOccurrences(of: "_", with: " ").capitalized
+    }
+
+    private func eventSubtitle(_ event: FeedEventItem) -> String {
+        if let minutes = event.payload["duration_minutes"] as? Int {
+            return "\(minutes) min"
+        }
+        if let minutes = event.payload["duration_minutes"] as? Double {
+            return "\(Int(minutes)) min"
+        }
+        if let note = event.payload["note"] as? String, !note.isEmpty {
+            return note
+        }
+        return eventMessage(event)
+    }
+
+    private func shortUserId(_ id: String) -> String {
+        String(id.prefix(6))
+    }
+
+    private func avatarView(avatarKey: String?, fallbackName: String) -> some View {
+        ZStack {
+            Circle()
+                .fill(Color.pink.opacity(0.18))
+
+            if let avatarKey,
+               let url = repository.publicAvatarURL(for: avatarKey) {
+                AsyncImage(url: url) { phase in
+                    switch phase {
+                    case .empty:
+                        ProgressView().scaleEffect(0.7)
+                    case .success(let image):
+                        image.resizable().scaledToFill()
+                    case .failure:
+                        Text(String(fallbackName.prefix(1)).uppercased())
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(.pink)
+                    @unknown default:
+                        Text(String(fallbackName.prefix(1)).uppercased())
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(.pink)
+                    }
+                }
+                .clipShape(Circle())
+            } else {
+                Text(String(fallbackName.prefix(1)).uppercased())
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.pink)
+            }
+        }
+        .frame(width: 34, height: 34)
+        .overlay(Circle().strokeBorder(Color.pink.opacity(0.25), lineWidth: 1))
     }
 
     private func relativeDate(_ date: Date) -> String {

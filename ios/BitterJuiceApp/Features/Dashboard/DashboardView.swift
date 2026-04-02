@@ -105,54 +105,76 @@ struct DashboardView: View {
     }
 
     private var friendActivityCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Latest from your crew")
-                    .font(.headline)
-                Spacer()
-                if isLoadingSocial {
-                    ProgressView()
-                        .scaleEffect(0.9)
-                }
-            }
+        let hasCrews = !crews.isEmpty
+        let items = Array(friendEvents.prefix(3))
+        return CrewLatestCard(
+            isLoading: isLoadingSocial,
+            hasCrews: hasCrews,
+            events: items,
+            messageForEvent: eventMessage,
+            relativeDate: relativeDate,
+            shortUserId: { String($0.prefix(6)) }
+        )
+    }
 
-            if crews.isEmpty {
-                Text("Join or create a crew to see friends’ activity here.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            } else if friendEvents.isEmpty {
-                Text("No new posts yet. Log something and it’ll show up here for others too.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            } else {
-                VStack(spacing: 10) {
-                    ForEach(friendEvents.prefix(3)) { event in
-                        HStack(spacing: 12) {
-                            ZStack {
-                                Circle().fill(Color.pink.opacity(0.15))
-                                Text("✨")
-                                    .font(.headline)
+    private struct CrewLatestCard: View {
+        let isLoading: Bool
+        let hasCrews: Bool
+        let events: [FeedEventItem]
+        let messageForEvent: (FeedEventItem) -> String
+        let relativeDate: (Date) -> String
+        let shortUserId: (String) -> String
+
+        var body: some View {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Text("Latest from your crew")
+                        .font(.headline)
+                    Spacer()
+                    if isLoading {
+                        ProgressView()
+                            .scaleEffect(0.9)
+                    }
+                }
+
+                if !hasCrews {
+                    Text("Join or create a crew to see friends’ activity here.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                } else if events.isEmpty {
+                    Text("No new posts yet. Log something and it’ll show up here for others too.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                } else {
+                    VStack(spacing: 10) {
+                        ForEach(events) { event in
+                            HStack(spacing: 12) {
+                                ZStack {
+                                    Circle().fill(Color.pink.opacity(0.15))
+                                    Text("✨")
+                                        .font(.headline)
+                                }
+                                .frame(width: 34, height: 34)
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(messageForEvent(event))
+                                        .font(.subheadline.weight(.semibold))
+                                        .lineLimit(2)
+                                    Text("by \(shortUserId(event.actorUserId)) · \(relativeDate(event.createdAt))")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
                             }
-                            .frame(width: 34, height: 34)
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(eventMessage(event))
-                                    .font(.subheadline.weight(.semibold))
-                                    .lineLimit(2)
-                                Text("by \(event.actorId) · \(relativeDate(event.createdAt))")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
+                            .padding(12)
+                            .background(Color.purple.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                         }
-                        .padding(12)
-                        .background(Color.purple.opacity(0.08), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
                 }
             }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     private var energyRingsCard: some View {
@@ -292,8 +314,8 @@ struct DashboardView: View {
                 return
             }
             let events = try await repository.fetchFeedEvents(for: firstCrew.id)
-            let mine = shortUserId
-            friendEvents = events.filter { $0.actorId != mine }
+            let mine = sessionStore.userId ?? ""
+            friendEvents = events.filter { $0.actorUserId != mine }
         } catch {
             friendEvents = []
         }
