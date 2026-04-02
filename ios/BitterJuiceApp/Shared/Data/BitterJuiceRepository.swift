@@ -72,6 +72,8 @@ final class BitterJuiceRepository {
         let note: String
         let low_energy: Bool
         let proof_asset_key: String?
+        let quantity_value: Double?
+        let quantity_unit: String?
     }
 
     private struct FeedEventInsert: Encodable {
@@ -89,6 +91,8 @@ final class BitterJuiceRepository {
         let note: String
         let low_energy: Bool
         let proof_asset_key: String?
+        let quantity_value: Double?
+        let quantity_unit: String?
         let posted_to_squad_feed: Bool
         let squad_id: UUID?
     }
@@ -101,6 +105,8 @@ final class BitterJuiceRepository {
         let duration_minutes: Int
         let note: String
         let proof_asset_key: String?
+        let quantity_value: Double?
+        let quantity_unit: String?
     }
 
     private struct ProfileStatsRow: Decodable {
@@ -195,7 +201,9 @@ final class BitterJuiceRepository {
         let crewId: String?
         let status: String
         let activityPickId: String
-        let goalTarget: Int
+        let goalMetric: String
+        let targetValue: Double
+        let targetUnit: String
         let startAt: Date
         let endAt: Date
         let prizeProposal: String
@@ -210,7 +218,10 @@ final class BitterJuiceRepository {
         let crew_id: UUID?
         let status: String
         let activity_pick_id: String
-        let goal_target: Int
+        let goal_metric: String?
+        let target_value: Double?
+        let target_unit: String?
+        let goal_target: Int?
         let start_at: Date
         let end_at: Date
         let prize_proposal: String
@@ -223,7 +234,9 @@ final class BitterJuiceRepository {
         let crew_id: UUID?
         let status: String
         let activity_pick_id: String
-        let goal_target: Int
+        let goal_metric: String
+        let target_value: Double
+        let target_unit: String
         let start_at: Date
         let end_at: Date
         let prize_proposal: String
@@ -252,7 +265,10 @@ final class BitterJuiceRepository {
             .value
 
         return rows.map {
-            ChallengeItem(
+            let metric = $0.goal_metric ?? "sessions"
+            let target = $0.target_value ?? Double($0.goal_target ?? 1)
+            let unit = $0.target_unit ?? (metric == "distance" ? "km" : metric)
+            return ChallengeItem(
                 id: $0.id.uuidString,
                 createdAt: $0.created_at,
                 createdBy: $0.created_by.uuidString,
@@ -260,7 +276,9 @@ final class BitterJuiceRepository {
                 crewId: $0.crew_id?.uuidString,
                 status: $0.status,
                 activityPickId: $0.activity_pick_id,
-                goalTarget: $0.goal_target,
+                goalMetric: metric,
+                targetValue: target,
+                targetUnit: unit,
                 startAt: $0.start_at,
                 endAt: $0.end_at,
                 prizeProposal: $0.prize_proposal,
@@ -273,7 +291,9 @@ final class BitterJuiceRepository {
         inviteeId: String,
         crewId: String?,
         activityPickId: String,
-        goalTarget: Int,
+        goalMetric: String,
+        targetValue: Double,
+        targetUnit: String,
         startAt: Date,
         endAt: Date,
         prizeProposal: String,
@@ -293,13 +313,59 @@ final class BitterJuiceRepository {
             crew_id: crewUUID,
             status: "pending",
             activity_pick_id: activityPickId,
-            goal_target: max(1, goalTarget),
+            goal_metric: goalMetric,
+            target_value: max(0.0001, targetValue),
+            target_unit: targetUnit,
             start_at: startAt,
             end_at: endAt,
             prize_proposal: prizeProposal,
             note: note
         )
         try await client.from("challenges").insert(row).execute()
+    }
+
+    func fetchCrewMemberProfiles(crewId: String) async throws -> [PublicProfileItem] {
+        guard let crewUUID = UUID(uuidString: crewId) else { return [] }
+        struct MemberRow: Decodable { let user_id: UUID }
+        let members: [MemberRow] = try await client
+            .from("squad_members")
+            .select("user_id")
+            .eq("squad_id", value: crewUUID.uuidString)
+            .execute()
+            .value
+        return try await fetchPublicProfiles(userIds: members.map { $0.user_id.uuidString })
+    }
+
+    func computeChallengeProgress(
+        userId: String,
+        activityPickId: String,
+        startAt: Date,
+        endAt: Date,
+        metric: String
+    ) async throws -> Double {
+        let startIso = ISO8601DateFormatter().string(from: startAt)
+        let endIso = ISO8601DateFormatter().string(from: endAt)
+        let rows: [ActivityLogRow] = try await client
+            .from("activity_logs")
+            .select("id,created_at,category,interest_tag_id,duration_minutes,note,proof_asset_key,quantity_value,quantity_unit")
+            .eq("user_id", value: userId)
+            .eq("interest_tag_id", value: activityPickId)
+            .gte("created_at", value: startIso)
+            .lte("created_at", value: endIso)
+            .execute()
+            .value
+
+        switch metric {
+        case "minutes":
+            return Double(rows.map(\.duration_minutes).reduce(0, +))
+        case "distance":
+            return rows.compactMap { row in
+                guard let v = row.quantity_value, row.quantity_unit?.lowercased() == "km" else { return nil }
+                return v
+            }.reduce(0, +)
+        default:
+            return Double(rows.count)
+        }
     }
 
     func setChallengeStatus(challengeId: String, status: String) async throws {
@@ -345,7 +411,9 @@ final class BitterJuiceRepository {
         durationMinutes: Int,
         note: String,
         proofAssetKey: String?,
-        lowEnergyMode: Bool
+        lowEnergyMode: Bool,
+        quantityValue: Double? = nil,
+        quantityUnit: String? = nil
     ) async throws {
         let session = try await client.auth.session
         guard !session.isExpired else {
@@ -367,7 +435,9 @@ final class BitterJuiceRepository {
             duration_minutes: durationMinutes,
             note: note,
             low_energy: lowEnergyMode,
-            proof_asset_key: proofAssetKey
+            proof_asset_key: proofAssetKey,
+            quantity_value: quantityValue,
+            quantity_unit: quantityUnit
         )
 
         var postedToFeed = false
@@ -390,6 +460,8 @@ final class BitterJuiceRepository {
             note: note,
             low_energy: lowEnergyMode,
             proof_asset_key: proofAssetKey,
+            quantity_value: quantityValue,
+            quantity_unit: quantityUnit,
             posted_to_squad_feed: postedToFeed,
             squad_id: squadUUID
         )
@@ -403,7 +475,9 @@ final class BitterJuiceRepository {
         interestTagId: String,
         durationMinutes: Int,
         note: String,
-        proofAssetKey: String?
+        proofAssetKey: String?,
+        quantityValue: Double? = nil,
+        quantityUnit: String? = nil
     ) async throws {
         let session = try await client.auth.session
         guard !session.isExpired else {
@@ -420,7 +494,9 @@ final class BitterJuiceRepository {
             duration_minutes: durationMinutes,
             note: note,
             low_energy: false,
-            proof_asset_key: proofAssetKey
+            proof_asset_key: proofAssetKey,
+            quantity_value: quantityValue,
+            quantity_unit: quantityUnit
         )
 
         for crewId in normalizedCrewUUIDs {
@@ -441,6 +517,8 @@ final class BitterJuiceRepository {
             note: note,
             low_energy: false,
             proof_asset_key: proofAssetKey,
+            quantity_value: quantityValue,
+            quantity_unit: quantityUnit,
             posted_to_squad_feed: !normalizedCrewUUIDs.isEmpty,
             squad_id: normalizedCrewUUIDs.first
         )
@@ -454,7 +532,7 @@ final class BitterJuiceRepository {
         }
         let rows: [ActivityLogRow] = try await client
             .from("activity_logs")
-            .select("id,created_at,category,interest_tag_id,duration_minutes,note,proof_asset_key")
+            .select("id,created_at,category,interest_tag_id,duration_minutes,note,proof_asset_key,quantity_value,quantity_unit")
             .eq("user_id", value: session.user.id.uuidString)
             .order("created_at", ascending: false)
             .limit(limit)

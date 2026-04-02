@@ -17,6 +17,7 @@ struct ActivityLogView: View {
     @State private var activityMode: ActivityMode = .myPicks
     @State private var isActivityPickerOpen = false
     @State private var isNoteOpen = false
+    @State private var quantityText = ""
     @State private var history: [BitterJuiceRepository.ActivityLogItem] = []
     @State private var isLoadingHistory = false
     @State private var historyStatus = ""
@@ -112,6 +113,10 @@ struct ActivityLogView: View {
         .init(id: "general", title: "Something else", emoji: "✨", category: "other")
     ]
 
+    private var supportsDistanceKm: Bool {
+        ["cycling", "running", "rollerskiing", "swimming"].contains(selectedActivityId)
+    }
+
     private enum Mode: String, CaseIterable, Identifiable {
         case log = "Log"
         case history = "History"
@@ -205,6 +210,20 @@ struct ActivityLogView: View {
                                     }
                                 }
 
+                                if supportsDistanceKm {
+                                    sectionCard(title: "Distance (optional)") {
+                                        HStack {
+                                            TextField("e.g. 12.5", text: $quantityText)
+                                                .keyboardType(.decimalPad)
+                                            Text("km")
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        Text("This enables goals like “Cycle 400 km”.")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+
                                 sectionCard(title: "My circles") {
                                     if isLoadingCrews {
                                         HStack(spacing: 10) {
@@ -287,17 +306,21 @@ struct ActivityLogView: View {
                                         do {
                                             let activityTitle = activities.first(where: { $0.id == selectedActivityId })?.title ?? selectedActivityId
                                             let composedNote = "\(selectedMood) \(activityTitle)" + (note.isEmpty ? "" : " — \(note)")
+                                            let q = Double(quantityText.replacingOccurrences(of: ",", with: ".")) 
                                             try await repository.logActivity(
                                                 crewIds: Array(selectedCrewIds),
                                                 category: "activity",
                                                 interestTagId: selectedActivityId,
                                                 durationMinutes: durationPreset.minutes,
                                                 note: composedNote,
-                                                proofAssetKey: proofAssetKey
+                                                proofAssetKey: proofAssetKey,
+                                                quantityValue: supportsDistanceKm ? q : nil,
+                                                quantityUnit: supportsDistanceKm ? "km" : nil
                                             )
                                             status = selectedCrewIds.isEmpty
                                                 ? "Saved to your activity history ✅"
                                                 : "Saved + shared to your crews 🚀"
+                                            quantityText = ""
                                         } catch {
                                             status = BitterJuiceRepository.userFacingSupabaseMessage(error)
                                         }
@@ -627,7 +650,7 @@ struct ActivityLogView: View {
                             .foregroundStyle(ch.status == "accepted" ? .green : .secondary)
                     }
 
-                    Text("\(relativeDate(ch.startAt)) → \(relativeDate(ch.endAt))")
+                    Text("\(relativeDate(ch.startAt)) → \(relativeDate(ch.endAt)) · Goal: \(goalText(ch))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
 
@@ -683,6 +706,16 @@ struct ActivityLogView: View {
                 challengesStatus = BitterJuiceRepository.userFacingSupabaseMessage(error)
             }
         }
+    }
+
+    private func goalText(_ ch: BitterJuiceRepository.ChallengeItem) -> String {
+        let value: String
+        if ch.goalMetric == "sessions" {
+            value = "\(Int(ch.targetValue))"
+        } else {
+            value = String(format: "%.0f", ch.targetValue)
+        }
+        return "\(value) \(ch.targetUnit)"
     }
 
     private func setChallenge(_ challenge: BitterJuiceRepository.ChallengeItem, status: String) async {

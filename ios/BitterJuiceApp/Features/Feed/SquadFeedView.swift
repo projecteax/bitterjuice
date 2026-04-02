@@ -17,14 +17,16 @@ struct SquadFeedView: View {
     @State private var crewSheetError = ""
     @State private var crewSheetBusy = false
     @State private var showChallengeSheet = false
-    @State private var challengeInviteeId = ""
     @State private var challengePickId = "running"
-    @State private var challengeGoalTarget = 1
+    @State private var challengeGoalMetric: ChallengeMetric = .distance
+    @State private var challengeTargetText = "400"
     @State private var challengeStart = Date()
     @State private var challengeEnd = Calendar.current.date(byAdding: .day, value: 7, to: Date()) ?? Date().addingTimeInterval(7 * 86400)
     @State private var challengePrize = ""
     @State private var challengeNote = ""
     @State private var challengeBusy = false
+    @State private var crewMembers: [PublicProfileItem] = []
+    @State private var selectedInviteeId: String?
 
     private let repository = BitterJuiceRepository()
     private let activityTitles: [String: String] = [
@@ -139,6 +141,39 @@ struct SquadFeedView: View {
             }
             .sheet(isPresented: $showChallengeSheet) {
                 challengeSheet
+            }
+            .onChange(of: showChallengeSheet) { _, isOpen in
+                if isOpen {
+                    Task { await loadCrewMembersForChallenge() }
+                }
+            }
+        }
+    }
+
+    private enum ChallengeMetric: String, CaseIterable, Identifiable {
+        case sessions = "Sessions"
+        case minutes = "Minutes"
+        case distance = "Distance (km)"
+        var id: String { rawValue }
+        var apiValue: String {
+            switch self {
+            case .sessions: return "sessions"
+            case .minutes: return "minutes"
+            case .distance: return "distance"
+            }
+        }
+        var unit: String {
+            switch self {
+            case .sessions: return "sessions"
+            case .minutes: return "min"
+            case .distance: return "km"
+            }
+        }
+        var placeholder: String {
+            switch self {
+            case .sessions: return "10"
+            case .minutes: return "10"
+            case .distance: return "400"
             }
         }
     }
@@ -445,9 +480,17 @@ struct SquadFeedView: View {
         NavigationStack {
             Form {
                 Section("Invite") {
-                    TextField("Friend user UUID", text: $challengeInviteeId)
-                        .textInputAutocapitalization(.never)
-                        .autocorrectionDisabled()
+                    if crewMembers.isEmpty {
+                        Text("No members loaded. Make sure you selected a crew.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Picker("Crew member", selection: $selectedInviteeId) {
+                            Text("Select…").tag(String?.none)
+                            ForEach(crewMembers) { p in
+                                Text(p.username).tag(String?(p.id))
+                            }
+                        }
+                    }
                     if let crew = selectedCrew {
                         Text("Crew: \(crew.name)")
                             .font(.caption)
@@ -461,7 +504,19 @@ struct SquadFeedView: View {
                             Text(activityTitles[key] ?? key).tag(key)
                         }
                     }
-                    Stepper("Target: \(challengeGoalTarget)", value: $challengeGoalTarget, in: 1...100)
+
+                    Picker("Metric", selection: $challengeGoalMetric) {
+                        ForEach(ChallengeMetric.allCases) { m in
+                            Text(m.rawValue).tag(m)
+                        }
+                    }
+
+                    HStack {
+                        TextField("Target", text: $challengeTargetText)
+                            .keyboardType(.decimalPad)
+                        Text(challengeGoalMetric.unit)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Section("When") {
@@ -485,7 +540,7 @@ struct SquadFeedView: View {
                     Button(challengeBusy ? "Sending…" : "Send") {
                         Task { await createChallenge() }
                     }
-                    .disabled(challengeBusy || challengeInviteeId.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(challengeBusy || selectedInviteeId == nil)
                 }
             }
         }
@@ -496,11 +551,14 @@ struct SquadFeedView: View {
         challengeBusy = true
         defer { challengeBusy = false }
         do {
+            let target = Double(challengeTargetText.replacingOccurrences(of: ",", with: ".")) ?? 0
             try await repository.createChallenge(
-                inviteeId: challengeInviteeId.trimmingCharacters(in: .whitespacesAndNewlines),
+                inviteeId: selectedInviteeId ?? "",
                 crewId: selectedCrew?.id,
                 activityPickId: challengePickId,
-                goalTarget: challengeGoalTarget,
+                goalMetric: challengeGoalMetric.apiValue,
+                targetValue: target,
+                targetUnit: challengeGoalMetric.unit,
                 startAt: challengeStart,
                 endAt: challengeEnd,
                 prizeProposal: challengePrize,
@@ -509,13 +567,34 @@ struct SquadFeedView: View {
             await MainActor.run {
                 status = "Challenge sent ✅"
                 showChallengeSheet = false
-                challengeInviteeId = ""
                 challengePrize = ""
                 challengeNote = ""
-                challengeGoalTarget = 1
+                challengeGoalMetric = .distance
+                challengeTargetText = challengeGoalMetric.placeholder
+                selectedInviteeId = nil
             }
         } catch {
             await MainActor.run { status = BitterJuiceRepository.userFacingSupabaseMessage(error) }
+        }
+    }
+
+    private func loadCrewMembersForChallenge() async {
+        guard let crewId = selectedCrew?.id else {
+            await MainActor.run { crewMembers = []; selectedInviteeId = nil }
+            return
+        }
+        do {
+            let members = try await repository.fetchCrewMemberProfiles(crewId: crewId)
+            let myId = (try? await SupabaseClientProvider.shared.auth.session.user.id.uuidString) ?? ""
+            await MainActor.run {
+                // Don’t allow selecting yourself
+                crewMembers = members.filter { $0.id != myId }.sorted { $0.username < $1.username }
+                if selectedInviteeId == nil, let first = crewMembers.first?.id {
+                    selectedInviteeId = first
+                }
+            }
+        } catch {
+            await MainActor.run { crewMembers = []; selectedInviteeId = nil }
         }
     }
 
